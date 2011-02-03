@@ -15,6 +15,7 @@ MEDIA = {'media':'http://search.yahoo.com/mrss'}
 # Art
 ICON = "icon-default.png"
 ART = "art-default.jpg"
+BACKUPART = "art-backup.jpg"
 PREFS = "icon-prefs.png"
 
 #Some URLs for the script
@@ -76,11 +77,11 @@ def getBackground(path):
     logo = HTML.ElementFromString(page).xpath('//div[@class="logo"]//img')[0].get('src')
     Log(logo)
     if logo == None:
-      return DataObject(HTTP.Request('http://history.img.plugins.plexapp.tv?image='+bkgnd),'image/jpeg')
+      return DataObject(HTTP.Request('http://www.plexapp.tv/plugins/history/?image='+bkgnd),'image/jpeg')
     else:
-      return DataObject(HTTP.Request('http://history.img.plugins.plexapp.tv?image='+bkgnd+'&logo='+logo),'image/jpeg')
+      return DataObject(HTTP.Request('http://www.plexapp.tv/plugins/history/?image='+bkgnd+'&logo='+logo),'image/jpeg')
   except:
-    return Redirect(R(ART))
+    return Redirect(R(BACKUPART))
     
 def getShow(sender,path):
     dir = MediaContainer(art = R(ART), viewGroup = "List")
