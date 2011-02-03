@@ -1,15 +1,2 @@
 [
-  {
-    "id":"Videosperpage",
-    "type":"text",
-    "label":"Anzahl der Videos pro Seite",
-    "default":"10"
-  },
-  {
-    "id":"ShowAllRes",
-    "type":"enum",
-    "label":"Alle Auflösungen - nur die höchste Auflösung anzeigen",
-    "values":["Alle", "höchste"],
-    "default":"höchste"
-  }
 ]
