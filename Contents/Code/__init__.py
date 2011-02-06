@@ -48,7 +48,7 @@ def MainMenu():
 			dir.Append(Function(DirectoryItem(GetVideos, title=show.text), path=showVideos))
 		else:  
 			showMainPage = show.xpath('./parent::div/following-sibling::div[@class="content clearfix"]/ul[@class="nav"]/li/a[@class="more"]')[0].get('href')
-			dir.Append(Function(DirectoryItem(GetVideos, title=show.text, art=Function(GetBackground, path=showMainPage)), path=showVideos))
+			dir.Append(Function(DirectoryItem(GetVideos, title=show.text, art=Function(GetBackground, path=showMainPage)), path=showVideos, showMainPage=showMainPage))
 	return dir
 
 ####################################################################################################
@@ -61,16 +61,20 @@ def GetBackground(path):
 
 		logo = HTML.ElementFromString(page).xpath('//div[@class="logo"]//img')[0].get('src')
 		if logo == None:
-			return DataObject(HTTP.Request('http://www.plexapp.tv/plugins/history/?image='+bkgnd, cacheTime=CACHE_1MONTH),'image/jpeg')
+			return DataObject(HTTP.Request('http://www.plexapp.tv/plugins/history/?image='+bkgnd, cacheTime=CACHE_1MONTH), 'image/jpeg')
 		else:
-			return DataObject(HTTP.Request('http://www.plexapp.tv/plugins/history/?image='+bkgnd+'&logo='+logo, cacheTime=CACHE_1MONTH),'image/jpeg')
+			return DataObject(HTTP.Request('http://www.plexapp.tv/plugins/history/?image='+bkgnd+'&logo='+logo, cacheTime=CACHE_1MONTH), 'image/jpeg')
 	except:
 		return Redirect(R(ART))
 
 ####################################################################################################
 
-def GetVideos(sender,path):
-	dir = MediaContainer(viewGroup="InfoList")
+def GetVideos(sender, path, showMainPage=None):
+	if showMainPage != None:
+		dir = MediaContainer(viewGroup="InfoList", art=Function(GetBackground, path=showMainPage))
+	else:
+		dir = MediaContainer(viewGroup="InfoList")
+
 	page = HTTP.Request(BASE_URL+path).content
 	mrssdata = page[page.find('mrss: \"')+7:]
 	mrssdata =  String.Unquote(b64decode(mrssdata[:mrssdata.find('\"')])).replace('media:','media-')
@@ -79,6 +83,8 @@ def GetVideos(sender,path):
 		duration = int(category.xpath('./media-content')[0].get('duration'))*1000
 		dir.Append(Function(VideoItem(PlayVideo, summary = category.xpath('./description')[0].text, duration=duration, title=category.xpath('./title')[0].text, thumb=Function(GetThumb, path=category.xpath('./media-thumbnail')[0].get('url'))), path=video_url))
 
+	if len(dir) == 0:
+		return MessageContainer("No Videos", "There aren't any videos available for this show")
 	return dir
 
 ####################################################################################################
