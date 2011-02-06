@@ -1,47 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<site site="http://www.history.com*"
-        plugin="http://www.history.com/flash/VideoPlayer.swf"
-        initialState="playing"
-        version="1.0">
+<site site="http://www.history.com"
+	plugin="http://www.history.com/flash/VideoPlayer.swf"
+	initialState="playing"
+	version="1.0">
 
-        <crop x="12" y="12" width="623" height="350" />
+	<crop x="12" y="12" width="623" height="350" />
 
-        <seekbar type="simple">
-        	<start x="60" y="382" />
-			<end x="457" y="382" />
-			<played>
-				<color rgb="30B2E8" />
-			</played>
-		</seekbar>
+	<seekbar type="simple">
+		<start x="60" y="382" />
+		<end x="457" y="382" />
+		<played>
+			<color rgb="30B2E8" />
+		</played>
+	</seekbar>
 
-<!-- PLAYING -->
-		<state name="playing">
-			<event>
-				<condition>
-					<command name="pause" />
-				</condition>
-				<action>
-					<move x="30" y="382" />
-					<pause time="100" />
-					<click x="30" y="382" />
-					<goto state="paused" />
-				</action>
-			</event>
-		</state>
-		
-		<!-- PAUSED -->
-		<state name="paused">
-			<event>
-				<condition>
-					<command name="play" />
-				</condition>
-				<action>
-					<move x="30" y="382" />
-					<pause time="100" />
-					<click x="30" y="382" />
-					<goto state="playing" />
-				</action>
-			</event>
-		</state>
+	<!-- PLAYING -->
+	<state name="playing">
+		<event>
+			<condition>
+				<command name="pause" />
+			</condition>
+			<action>
+				<move x="30" y="382" />
+				<pause time="100" />
+				<click x="30" y="382" />
+				<goto state="paused" />
+			</action>
+		</event>
+	</state>
 
+	<!-- PAUSED -->
+	<state name="paused">
+		<event>
+			<condition>
+				<command name="play" />
+			</condition>
+			<action>
+				<move x="30" y="382" />
+				<pause time="100" />
+				<click x="30" y="382" />
+				<goto state="playing" />
+			</action>
+		</event>
+	</state>
 </site>
