@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import re
 from base64 import b64decode
 '''
 Created on December 1, 2010
@@ -76,8 +77,9 @@ def GetVideos(sender, path, showMainPage=None):
 		dir = MediaContainer(viewGroup="InfoList")
 
 	page = HTTP.Request(BASE_URL+path).content
-	mrssdata = page[page.find('mrss: \"')+7:]
-	mrssdata =  String.Unquote(b64decode(mrssdata[:mrssdata.find('\"')])).replace('media:','media-')
+	mrssdata = re.search('mrssData = "([^"]+)', page).group(1)
+	mrssdata =  String.Unquote(b64decode(mrssdata)).replace('media:','media-')
+
 	for category in XML.ElementFromString(mrssdata).xpath("//item"):
 		video_url = category.xpath('./link')[0].text +'#'+ category.xpath('./media-category')[0].text
 		duration = int(category.xpath('./media-content')[0].get('duration'))*1000
