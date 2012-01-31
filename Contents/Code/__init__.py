@@ -77,7 +77,7 @@ def GetVideos(sender, path, showMainPage=None):
 		dir = MediaContainer(viewGroup="InfoList")
 
 	page = HTTP.Request(BASE_URL+path).content
-	mrssdata = re.search('mrssData = "([^"]+)', page).group(1)
+	mrssdata = re.search('mrssData =[ ]+"([^"]+)', page).group(1)
 	mrssdata =  String.Unquote(b64decode(mrssdata)).replace('media:','media-')
 
 	for category in XML.ElementFromString(mrssdata).xpath("//item"):
