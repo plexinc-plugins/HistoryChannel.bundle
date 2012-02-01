@@ -1,43 +1,27 @@
 # -*- coding: utf-8 -*-
 import re
 from base64 import b64decode
-'''
-Created on December 1, 2010
 
-Version: 0.1
-Author: by Pierre
-'''
-
-# Plugin parameters
 PLUGIN_TITLE = "History Channel"
-PLUGIN_PREFIX = "/video/historychannel"
-
-# Art
 ICON = "icon-default.png"
 ART = "art-default.jpg"
-
-# Some URLs for the script
 BASE_URL = "http://www.history.com"
 
 ####################################################################################################
 
 def Start():
-	# Register our plugins request handler
-	Plugin.AddPrefixHandler(PLUGIN_PREFIX, MainMenu, PLUGIN_TITLE, ICON, ART)
+	Plugin.AddPrefixHandler("/video/historychannel", MainMenu, PLUGIN_TITLE, ICON, ART)
 
-	# Add in the views our plugin will support
 	Plugin.AddViewGroup("List", viewMode="List", mediaType="items")
 	Plugin.AddViewGroup("InfoList", viewMode="InfoList", mediaType="items")
 
-	# Set up our plugin's container
 	MediaContainer.title1 = PLUGIN_TITLE
 	MediaContainer.viewGroup = "List"
 	MediaContainer.art = R(ART)
 	DirectoryItem.thumb = R(ICON)
 
-	# Configure HTTP Cache lifetime
 	HTTP.CacheTime = CACHE_1HOUR
-	HTTP.Headers['User-Agent'] = "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.6; en-US; rv:1.9.2.13) Gecko/20101203 Firefox/3.6.13"
+	HTTP.Headers['User-Agent'] = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.7; rv:9.0.1) Gecko/20100101 Firefox/9.0.1"
 
 ####################################################################################################
 
@@ -103,4 +87,4 @@ def GetThumb(path, thumb_type="image/jpeg"):
 		except:
 			pass
 
-	return R(ICON)
+	return Redirect(R(ICON))
