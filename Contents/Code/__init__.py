@@ -31,12 +31,12 @@ def Start():
 
 	# Set up our plugin's container
 	ObjectContainer.title1 = PLUGIN_TITLE
-  	ObjectContainer.art = R(ART)
-  	ObjectContainer.view_group = 'List'
+	ObjectContainer.art = R(ART)
+	ObjectContainer.view_group = 'List'
 
-  	DirectoryObject.thumb = R(ICON)
-  	DirectoryObject.art = R(ART)
-  	VideoClipObject.thumb = R(ICON)
+	DirectoryObject.thumb = R(ICON)
+	DirectoryObject.art = R(ART)
+	VideoClipObject.thumb = R(ICON)
 
 	# Configure HTTP Cache lifetime
 	HTTP.CacheTime = CACHE_1HOUR
@@ -50,14 +50,14 @@ def MainMenu():
 		showVideos = show.xpath('./parent::div/following-sibling::div[@class="content clearfix"]/div[@class="info"]//a[@class="watch more"]')[0].get('href')
 		if show.xpath('./parent::div/following-sibling::div[@class="content clearfix"]/ul[@class="nav"]/li')[0].text != None:
 			oc.add(DirectoryObject(
-      			key = Callback(GetVideos, path = showVideos), 
-      			title = show.text))
-      	else:
+				key = Callback(GetVideos, path = showVideos), 
+				title = show.text))
+		else:
 			showMainPage = show.xpath('./parent::div/following-sibling::div[@class="content clearfix"]/ul[@class="nav"]/li/a[@class="more"]')[0].get('href')
 			oc.add(DirectoryObject(
-      			key = Callback(GetVideos, path = showVideos, showMainPage = showMainPage), 
-      			title = show.text,
-      			art = Callback(GetBackground, path = showMainPage)))
+				key = Callback(GetVideos, path = showVideos, showMainPage = showMainPage), 
+				title = show.text,
+				art = Callback(GetBackground, path = showMainPage)))
 	return oc
 
 ####################################################################################################
