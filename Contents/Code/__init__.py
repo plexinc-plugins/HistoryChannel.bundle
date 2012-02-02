@@ -79,7 +79,7 @@ def GetVideos(path, showMainPage = None):
 		summary = category.xpath('./description')[0].text
 		thumb = category.xpath('./media-thumbnail')[0].get('url')
 		duration = int(category.xpath('./media-content')[0].get('duration')) * 1000
-		Log("IABI:" + video_url)
+
 		oc.add(VideoClipObject(
 	        url = video_url,
 	        title = title,
