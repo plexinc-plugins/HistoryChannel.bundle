@@ -30,6 +30,8 @@
 	<array>
 		<string>AAC</string>
 	</array>
+	<key>PlexClientPlatforms</key>
+	<string>*</string>
 	<key>PlexPluginMode</key>
 	<string>AlwaysOn</string>
 	<key>PlexPluginRegions</key>
