@@ -62,30 +62,38 @@ def GetBackground(path):
 
 ####################################################################################################
 
-def GetVideos(path, showMainPage = None):
+def GetVideos(path, showMainPage = None, isNestedPlaylist=False):
 	if showMainPage != None:
 		oc = ObjectContainer(view_group = "InfoList", art = Callback(GetBackground, path=showMainPage))
 	else:
 		oc = ObjectContainer(view_group = "InfoList")
 
 	page = HTTP.Request(BASE_URL+path).content
-	mrssdata = re.search('mrssData =[ ]+"([^"]+)', page).group(1)
-	mrssdata =  String.Unquote(b64decode(mrssdata)).replace('media:','media-')
+	playlists = HTML.ElementFromString(page).xpath('//li[contains(@class,"parent videos")]/ul/li/a')
+	
+	if playlists and not isNestedPlaylist:
+		for playlist in playlists:
+			oc.add(DirectoryObject(
+				key = Callback(GetVideos, path = playlist.xpath('.')[0].get('href'), isNestedPlaylist=True),
+				title = playlist.xpath('.')[0].text))
+	else:
+		mrssdata = re.search('mrssData =[ ]+"([^"]+)', page).group(1)
+		mrssdata =  String.Unquote(b64decode(mrssdata)).replace('media:','media-')
 
-	for category in XML.ElementFromString(mrssdata).xpath("//item"):
-		video_url = category.xpath('./link')[0].text +'#'+ category.xpath('./media-category')[0].text
+		for category in XML.ElementFromString(mrssdata).xpath("//item"):
+			video_url = category.xpath('./link')[0].text +'#'+ category.xpath('./media-category')[0].text
 
-		title = category.xpath('./title')[0].text
-		summary = category.xpath('./description')[0].text
-		thumb = category.xpath('./media-thumbnail')[0].get('url')
-		duration = int(category.xpath('./media-content')[0].get('duration')) * 1000
+			title = category.xpath('./title')[0].text
+			summary = category.xpath('./description')[0].text
+			thumb = category.xpath('./media-thumbnail')[0].get('url')
+			duration = int(category.xpath('./media-content')[0].get('duration')) * 1000
 
-		oc.add(VideoClipObject(
-	        url = video_url,
-	        title = title,
-	        summary = summary,
-	        thumb = Callback(GetThumb, path = thumb),
-	        duration = duration))
+			oc.add(VideoClipObject(
+		        url = video_url,
+		        title = title,
+		        summary = summary,
+		        thumb = Callback(GetThumb, path = thumb),
+		        duration = duration))
 
 	if len(oc) == 0:
 		return MessageContainer("No Videos", "There aren't any videos available for this show")
