@@ -27,6 +27,34 @@ def Start():
 
 ####################################################################################################
 def MainMenu():
+	oc = ObjectContainer()
+
+	oc.add(DirectoryObject(key=Callback(FullShowsList), title="Shows With Full Episodes"))
+	oc.add(DirectoryObject(key=Callback(AllShowsList), title="All Shows"))
+
+	return oc
+
+####################################################################################################
+def FullShowsList():
+
+	oc = ObjectContainer()
+
+	for show in HTML.ElementFromURL(BASE_URL+'/videos').xpath('//div[@id="full-episode-area"]//div'):
+		url = show.xpath('.//p/a/@href')[0].replace('\n','').replace('http://www.history.com','')
+		title = show.xpath('.//p/a/text()')[0]
+		thumb_url = BASE_URL + show.xpath('.//a/img/@src')[0]
+		
+		oc.add(DirectoryObject(
+			key = Callback(GetVideos, path = url),
+			title = title, 
+			thumb = Resource.ContentsOfURLWithFallback(thumb_url,'icon-default.png'),
+			art = Callback(GetBackground, path = url.replace('/videos',''))
+		))
+
+	return oc
+
+####################################################################################################
+def AllShowsList():
 
 	oc = ObjectContainer()
 
