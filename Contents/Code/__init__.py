@@ -4,8 +4,6 @@ ICON = "icon-default.png"
 ART = "art-default.jpg"
 BASE_URL = "http://www.history.com"
 
-RE_MRSS = Regex('mrssData =\s+"([^"]+)')
-
 ####################################################################################################
 def Start():
 
@@ -58,7 +56,7 @@ def AllShowsList():
 
 	oc = ObjectContainer()
 
-	for show in HTML.ElementFromURL(BASE_URL+'/shows').xpath("//div[@id='all-shows-accordion']//div[@class='header']/span[@class='has-video']/preceding-sibling::span"):
+	for show in HTML.ElementFromURL(BASE_URL+'/shows').xpath("//span[@class='has-video']/preceding-sibling::span"):
 		showVideos = show.xpath('./parent::div/following-sibling::div[@class="content clearfix"]/div[@class="info"]//a[@class="watch more"]')[0].get('href')
 		try: showMainPage = show.xpath('./parent::div/following-sibling::div[@class="content clearfix"]/ul[@class="nav"]/li/a[@class="more"]')[0].get('href')
 		except: showMainPage = showVideos
@@ -74,9 +72,11 @@ def AllShowsList():
 ####################################################################################################
 def GetVideos(path, showMainPage = None, isNestedPlaylist = False):
 
+	url = BASE_URL + path
 	oc = ObjectContainer(view_group = "InfoList")
-	page = HTTP.Request(BASE_URL+path).content
-	playlists = HTML.ElementFromString(page).xpath('//li[contains(@class,"parent videos")]/ul/li/a')
+	page = HTTP.Request(url).content
+	html = HTML.ElementFromString(page)
+	playlists = html.xpath('//li[contains(@class,"parent videos")]/ul/li/a')
 
 	if playlists and not isNestedPlaylist:
 		for playlist in playlists:
@@ -86,39 +86,23 @@ def GetVideos(path, showMainPage = None, isNestedPlaylist = False):
 				art = Callback(GetBackground, path = showMainPage)
 			))
 	else:
-		mrssdata = RE_MRSS.search(page).group(1)
-		mrssdata =  String.Unquote(String.Base64Decode(mrssdata)).replace('media:','media-')
+		pl = page[page.find('playlist = ')+11:]
+		pl = pl[:pl.find(';\n</script')]
+		playlistJSON = JSON.ObjectFromString(pl)
 
-		for category in XML.ElementFromString(mrssdata).xpath("//item"):
-			video_url = category.xpath('./link')[0].text +'#'+ category.xpath('./media-category')[0].text
-			title = category.xpath('./title')[0].text
-			summary = category.xpath('./description')[0].text
-			thumb = category.xpath('./media-thumbnail')[0].get('url')
-			duration = int(category.xpath('./media-content')[0].get('duration')) * 1000
-
+		for video in playlistJSON:
 			oc.add(VideoClipObject(
-				url = video_url,
-				title = title,
-				summary = summary,
-				thumb = Callback(GetThumb, path = thumb),
-				art = Callback(GetBackground, path = showMainPage),
-				duration = duration
+				url = video['siteUrl'],
+				title = video['display']['title'],
+				duration = int(video['display']['duration']) * 1000,
+				summary = video['display']['description'],
+				thumb = video['display']['thumbUrl'],
+				art = Callback(GetBackground, path = showMainPage)
 			))
 
 	if len(oc) == 0:
 		return MessageContainer("No Videos", "There aren't any videos available for this show")
 	return oc
-
-####################################################################################################
-def GetThumb(path, thumb_type = "image/jpeg"):
-
-	if (path != None):
-		try:
-			return DataObject(HTTP.Request(path, cacheTime=CACHE_1MONTH), thumb_type)
-		except:
-			pass
-
-	return Redirect(R(ICON))
 
 ####################################################################################################
 def GetBackground(path):
@@ -135,3 +119,19 @@ def GetBackground(path):
 			return DataObject(HTTP.Request('http://www.plexapp.tv/plugins/history/?image='+bkgnd+'&logo='+logo, cacheTime=CACHE_1MONTH), 'image/jpeg')
 	except:
 		return Redirect(R(ART))
+
+####################################################################################################
+def TimeToMs(timecode):
+
+	seconds = 0
+
+	try:
+		duration = timecode.split(':')
+		duration.reverse()
+
+		for i in range(0, len(duration)):
+			seconds += int(duration[i]) * (60**i)
+	except:
+		pass
+
+	return seconds * 1000
