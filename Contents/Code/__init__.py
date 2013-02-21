@@ -45,8 +45,7 @@ def FullShowsList():
 		oc.add(DirectoryObject(
 			key = Callback(GetVideos, path = url),
 			title = title, 
-			thumb = Resource.ContentsOfURLWithFallback(thumb_url,'icon-default.png'),
-			art = Callback(GetBackground, path = url.replace('/videos',''))
+			thumb = Resource.ContentsOfURLWithFallback(thumb_url,'icon-default.png')
 		))
 
 	return oc
@@ -63,8 +62,7 @@ def AllShowsList():
 
 		oc.add(DirectoryObject(
 			key = Callback(GetVideos, path = showVideos, showMainPage = showMainPage),
-			title = show.text,
-			art = Callback(GetBackground, path = showMainPage)
+			title = show.text
 		))
 
 	return oc
@@ -82,8 +80,7 @@ def GetVideos(path, showMainPage = None, isNestedPlaylist = False):
 		for playlist in playlists:
 			oc.add(DirectoryObject(
 				key = Callback(GetVideos, path = playlist.get('href'), showMainPage = showMainPage, isNestedPlaylist = True),
-				title = playlist.text,
-				art = Callback(GetBackground, path = showMainPage)
+				title = playlist.text
 			))
 	else:
 		pl = page[page.find('playlist = ')+11:]
@@ -96,29 +93,12 @@ def GetVideos(path, showMainPage = None, isNestedPlaylist = False):
 				title = video['display']['title'],
 				duration = int(video['display']['duration']) * 1000,
 				summary = video['display']['description'],
-				thumb = video['display']['thumbUrl'],
-				art = Callback(GetBackground, path = showMainPage)
+				thumb = video['display']['thumbUrl']
 			))
 
 	if len(oc) == 0:
 		return MessageContainer("No Videos", "There aren't any videos available for this show")
 	return oc
-
-####################################################################################################
-def GetBackground(path):
-
-	try:
-		page = HTTP.Request(BASE_URL+path).content
-		bkgnd = page[page.find('background: url(')+16:]
-		bkgnd = bkgnd[:bkgnd.find(')')]
-		logo = HTML.ElementFromString(page).xpath('//div[@class="logo"]//img')[0].get('src')
-
-		if logo == None:
-			return DataObject(HTTP.Request('http://www.plexapp.tv/plugins/history/?image='+bkgnd, cacheTime=CACHE_1MONTH), 'image/jpeg')
-		else:
-			return DataObject(HTTP.Request('http://www.plexapp.tv/plugins/history/?image='+bkgnd+'&logo='+logo, cacheTime=CACHE_1MONTH), 'image/jpeg')
-	except:
-		return Redirect(R(ART))
 
 ####################################################################################################
 def TimeToMs(timecode):
