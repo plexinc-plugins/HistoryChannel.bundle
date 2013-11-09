@@ -1,117 +1,104 @@
-# -*- coding: utf-8 -*-
-NAME = "History Channel"
-ICON = "icon-default.png"
-ART = "art-default.jpg"
-BASE_URL = "http://www.history.com"
+TITLE = 'History Channel'
+PREFIX = '/video/historychannel'
+ART = 'art-default.jpg'
+ICON = 'icon-default.png'
 
+BASE_URL = "http://www.history.com"
+H_SHOWS = "http://www.history.com/videos"
+H2_SHOWS = "http://www.history.com/videos/h2"
+# s= season m = carousel id and free = true or false to see those that are locked or unlocked
+# where %s is show link between history.com and videos
+# Ex http://www.history.com/api/html/shows/pawn-stars/videos?co=true&m=5189717d404fa&s=All&free=false
+API_URL = 'http://www.history.com/api/html%s/videos?co=true&m=%s&s=All&free=false'
+RE_CAROUSEL_ID = Regex("div id='(.+?)'><!--")
+RE_CAROUSEL_NAME = Regex('class="head-section1">(.+?)<')
 ####################################################################################################
 def Start():
 
-	Plugin.AddPrefixHandler("/video/historychannel", MainMenu, NAME, ICON, ART)
-
-	Plugin.AddViewGroup("List", viewMode="List", mediaType="items")
-	Plugin.AddViewGroup("InfoList", viewMode="InfoList", mediaType="items")
-
-	ObjectContainer.title1 = NAME
-	ObjectContainer.art = R(ART)
-	ObjectContainer.view_group = 'List'
-
-	DirectoryObject.thumb = R(ICON)
-	DirectoryObject.art = R(ART)
-	VideoClipObject.thumb = R(ICON)
-
-	HTTP.CacheTime = CACHE_1HOUR
-	HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.7; rv:12.0) Gecko/20100101 Firefox/12.0'
+    ObjectContainer.title1 = "Comedy Central"
+    HTTP.CacheTime = CACHE_1HOUR
+    HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:18.0) Gecko/20100101 Firefox/18.0'
 
 ####################################################################################################
+@handler(PREFIX, TITLE, art=ART, thumb=ICON)
 def MainMenu():
-	oc = ObjectContainer()
+    oc = ObjectContainer()
+    oc.add(DirectoryObject(key=Callback(Types, title='History Channel Shows', url=H_SHOWS), title='History Channel Shows')) 
+    oc.add(DirectoryObject(key=Callback(Types, title='History Channel 2 Shows', url=H2_SHOWS), title='History Channel 2 Shows')) 
+    oc.add(DirectoryObject(key=Callback(Videos, title='Full Episodes', url=BASE_URL, carousel_id='524f1163e6d3a'), title='Full Episodes')) 
+    return oc
+####################################################################################################
+@route(PREFIX + '/types')
+def Types(url, title):
+    oc = ObjectContainer()
+    shows = HTML.ElementFromURL(url)
+    for show in shows.xpath('//li[@class="item hasFullVideos"]'):
+        name = show.xpath('./a//@alt')[0]
+        if not name:
+            name = show.xpath('.//@data-title')[0]
+        show_url = show.xpath('./a//@href')[0]
+        if not show_url.startswith('http://'):
+            show_url = BASE_URL + show_url
+        thumb = show.xpath('./a/img//@src')
+        oc.add(DirectoryObject(key = Callback(TypeMenu, show_url=show_url, title=name, thumb=thumb), title=name, thumb=Resource.ContentsOfURLWithFallback(url=thumb)))
 
-	oc.add(DirectoryObject(key=Callback(FullShowsList), title="Shows With Full Episodes"))
-	oc.add(DirectoryObject(key=Callback(AllShowsList), title="All Shows"))
-
-	return oc
+    return oc
 
 ####################################################################################################
-def FullShowsList():
+@route(PREFIX + '/typemenu')
+def TypeMenu(title, show_url, thumb):
 
-	oc = ObjectContainer()
+    oc = ObjectContainer(title2=title)
+    shows = HTML.ElementFromURL(show_url)
 
-	for show in HTML.ElementFromURL(BASE_URL+'/videos').xpath('//div[@id="full-episode-area"]//div'):
-		url = show.xpath('.//p/a/@href')[0].replace('\n','').replace('http://www.history.com','')
-		title = show.xpath('.//p/a/text()')[0]
-		thumb_url = BASE_URL + show.xpath('.//a/img/@src')[0]
-		
-		oc.add(DirectoryObject(
-			key = Callback(GetVideos, path = url),
-			title = title, 
-			thumb = Resource.ContentsOfURLWithFallback(thumb_url,'icon-default.png')
-		))
+    for section in shows.xpath('//section/div/div/div[@class="span12"]/div'):
+        try:
+            title = section.xpath('./div/h4[@class="head-section1"]//text()')[0].strip()
+        except:
+            title = section.xpath('./div/h3//text()')[0].strip()
+        carousel_id = section.xpath('.//@id')[0]
+        oc.add(DirectoryObject(key = Callback(Videos, show_url=show_url, title=title, carousel_id=carousel_id), title=title, thumb=Resource.ContentsOfURLWithFallback(url=thumb)))
 
-	return oc
-
-####################################################################################################
-def AllShowsList():
-
-	oc = ObjectContainer()
-
-	for show in HTML.ElementFromURL(BASE_URL+'/shows').xpath("//span[@class='has-video']/preceding-sibling::span"):
-		showVideos = show.xpath('./parent::div/following-sibling::div[@class="content clearfix"]/div[@class="info"]//a[@class="watch more"]')[0].get('href')
-		try: showMainPage = show.xpath('./parent::div/following-sibling::div[@class="content clearfix"]/ul[@class="nav"]/li/a[@class="more"]')[0].get('href')
-		except: showMainPage = showVideos
-
-		oc.add(DirectoryObject(
-			key = Callback(GetVideos, path = showVideos, showMainPage = showMainPage),
-			title = show.text
-		))
-
-	return oc
+    return oc
 
 ####################################################################################################
-def GetVideos(path, showMainPage = None, isNestedPlaylist = False):
+@route(PREFIX + '/videos')
+def Videos(show_url, title, carousel_id):
 
-	url = BASE_URL + path
-	oc = ObjectContainer(view_group = "InfoList")
-	page = HTTP.Request(url).content
-	html = HTML.ElementFromString(page)
-	playlists = html.xpath('//li[contains(@class,"parent videos")]/ul/li/a')
+    oc = ObjectContainer(title2=title)
 
-	if playlists and not isNestedPlaylist:
-		for playlist in playlists:
-			oc.add(DirectoryObject(
-				key = Callback(GetVideos, path = playlist.get('href'), showMainPage = showMainPage, isNestedPlaylist = True),
-				title = playlist.text
-			))
-	else:
-		pl = page[page.find('playlist = ')+11:]
-		pl = pl[:pl.find(';\n</script')]
-		playlistJSON = JSON.ObjectFromString(pl)
+    show_part = show_url.split(BASE_URL)[1].split('/videos')[0]
+    content = HTTP.Request(API_URL %(show_part, carousel_id)).content
+    content = "[%s]" % content
+    content_json = JSON.ObjectFromString(content)
+    data = content_json[0][carousel_id]
+    data = HTML.ElementFromString(data)
+        
+    for episode in data.xpath('//li[contains(@class,"slider-item")]/a'):
+        url = episode.xpath('.//@data-href')[0]
+        data_status = episode.xpath('.//@data-status')[0]
+        title = episode.xpath('.//@data-original-title')[0]
+        if data_status == 'locked':
+            continue
+        duration = episode.xpath('.//@data-duration')[0].replace('min', '')
+        duration = int(duration) * 60000
+        rating = episode.xpath('.//@data-rating')[0]
+        try:
+            thumb = episode.xpath('./span/span/img//@src')[0]
+        except:
+            thumb = None
+        description = episode.xpath('.//@data-content')[0]
+        summary = HTML.ElementFromString(description).xpath('./p//text()')[0]
 
-		for video in playlistJSON:
-			oc.add(VideoClipObject(
-				url = video['siteUrl'],
-				title = video['display']['title'],
-				duration = int(video['display']['duration']) * 1000,
-				summary = video['display']['description'],
-				thumb = video['display']['thumbUrl']
-			))
+        oc.add(VideoClipObject(
+            url = url,
+            title = title,
+            content_rating = rating,
+            summary = summary,
+            thumb = Resource.ContentsOfURLWithFallback(url=thumb)
+        ))
 
-	if len(oc) == 0:
-		return MessageContainer("No Videos", "There aren't any videos available for this show")
-	return oc
-
-####################################################################################################
-def TimeToMs(timecode):
-
-	seconds = 0
-
-	try:
-		duration = timecode.split(':')
-		duration.reverse()
-
-		for i in range(0, len(duration)):
-			seconds += int(duration[i]) * (60**i)
-	except:
-		pass
-
-	return seconds * 1000
+    if len(oc) < 1:
+        return ObjectContainer(header="Empty", message="This show does not have any unlocked videos available.")
+    else:
+        return oc
