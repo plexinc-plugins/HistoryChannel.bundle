@@ -1,7 +1,5 @@
 TITLE = 'History Channel'
 PREFIX = '/video/historychannel'
-ART = 'art-default.jpg'
-ICON = 'icon-default.png'
 
 BASE_URL = "http://www.history.com"
 H_SHOWS = "http://www.history.com/videos"
@@ -20,7 +18,7 @@ def Start():
     HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:18.0) Gecko/20100101 Firefox/18.0'
 
 ####################################################################################################
-@handler(PREFIX, TITLE, art=ART, thumb=ICON)
+@handler(PREFIX, TITLE)
 def MainMenu():
     oc = ObjectContainer()
     oc.add(DirectoryObject(key=Callback(Types, title='History Channel Shows', url=H_SHOWS), title='History Channel Shows')) 
