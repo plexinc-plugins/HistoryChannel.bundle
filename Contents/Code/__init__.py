@@ -13,7 +13,7 @@ RE_API = Regex("freeFilter\[data-module-id=.+freefilter', '(.+?)'")
 ####################################################################################################
 def Start():
 
-    ObjectContainer.title1 = title
+    ObjectContainer.title1 = TITLE
     HTTP.CacheTime = CACHE_1HOUR
     HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:18.0) Gecko/20100101 Firefox/18.0'
 
