@@ -87,7 +87,6 @@ def Seasons(show_id, show_title, episode_url, clip_url, show_thumb):
             else:
                 seasons[int(item['season'])] = seasons[int(item['season'])] + 1
     
-    Log(seasons)
     for season in seasons:
         oc.add(
             SeasonObject(
