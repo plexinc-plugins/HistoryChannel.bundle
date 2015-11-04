@@ -125,7 +125,7 @@ def Episodes(show_title, episode_url, clip_url, show_thumb, season):
             if not int(item['season']) == int(season):
                 continue
         
-        url = item['playURL_HLS']
+        url = item['siteUrl']
         title = item['title']
         summary = item['description'] if 'description' in item else None
         
@@ -140,12 +140,12 @@ def Episodes(show_title, episode_url, clip_url, show_thumb, season):
             
         show = item['seriesName'] if 'seriesName' in item else show_title
         duration = int(item['totalVideoDuration']) if 'totalVideoDuration' in item else None
-        originally_available_at = item['originalAirDate'].split('T')[0] if 'originalAirDate' in item else None
+        originally_available_at = Datetime.ParseDate(item['originalAirDate'].split('T')[0]).date() if 'originalAirDate' in item else None
         index = int(item['episode']) if 'episode' in item else None
         season = int(item['season']) if 'season' in item else None
         
         oc.add(
-            CreateEpisodeObject(
+            EpisodeObject(
                 url = url,
                 title = title,
                 summary = summary,
@@ -162,80 +162,3 @@ def Episodes(show_title, episode_url, clip_url, show_thumb, season):
     oc.objects.sort(key = lambda obj: obj.index)
     
     return oc
-
-###################################################################################################
-@route(PREFIX + '/createepisodeobject', duration=int, index=int, season=int, include_container=bool)
-def CreateEpisodeObject(url, title, summary, thumb, art, show, duration, originally_available_at, index, season, include_container=False):
-
-    episode_obj = EpisodeObject(
-        key = 
-            Callback(
-                CreateEpisodeObject,
-                url = url,
-                title = title,
-                summary = summary,
-                thumb = thumb,
-                art = art,
-                show = show,
-                duration = duration,
-                originally_available_at = originally_available_at,
-                index = index,
-                season = season,
-                include_container = True
-            ),
-        rating_key = url,
-        title = title,
-        summary = summary,
-        thumb = thumb,
-        art = art,
-        show = show,
-        duration = duration,
-        originally_available_at = Datetime.ParseDate(originally_available_at).date() if originally_available_at is not None else None,
-        index = index,
-        season = season,
-        items = [
-            MediaObject(
-                parts=[PartObject(key=HTTPLiveStreamURL(Callback(PlayVideo, url=url)))],
-                audio_channels = 2,
-                optimized_for_streaming = True,
-                video_resolution = 540
-            )
-        ]
-    )
-    
-    if include_container:
-        return ObjectContainer(objects=[episode_obj])
-    else:
-        return episode_obj
-
-###################################################################################################
-@route(PREFIX + '/playvideo.m3u8')
-@indirect
-def PlayVideo(url, **kwargs):
-
-    unsigned_smil_url = url.split('?')[0]
-    signature = HTTP.Request(SIGNATURE_URL % String.Quote(unsigned_smil_url)).content
-    smil_url = '%s?switch=hls&assetTypes=medium_video_ak&mbr=true&metafile=true&sig=%s' % (unsigned_smil_url, signature)
-    smil = XML.ElementFromURL(smil_url)
-
-    # Check for expired
-    expired = smil.xpath('//*[@*[contains(., "Expired") or contains(., "expired")]]')
-    if len(expired) > 0:
-        raise Ex.MediaExpired
-    
-    max_resolution = 0
-    hls_url = None
-    for video in smil.xpath('//a:video', namespaces=SMIL_NS):
-        resolution = video.get('height')
-        if resolution > max_resolution:
-            max_resolution = resolution
-            hls_url = video.get('src')
-            break
-            
-    if not hls_url:
-        raise Ex.MediaNotAvailable
-        
-    return IndirectResponse(
-        VideoClipObject,
-        key = HTTPLiveStreamURL(url=hls_url)
-    )
