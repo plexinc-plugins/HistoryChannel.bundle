@@ -44,7 +44,7 @@ def MainMenu():
     oc.objects.sort(key = lambda obj: obj.title)
     
     if len(oc) < 1:
-        return ObjectContainer(header='Empty', message='This show does not have any unlocked videos available.')
+        return ObjectContainer(header='Empty', message='There are no shows available.')
     else:
         return oc 
 
