@@ -2,8 +2,6 @@ TITLE = 'History Channel'
 PREFIX = '/video/historychannel'
 
 SHOWS = 'http://wombatapi.aetv.com/shows2/history'
-SIGNATURE_URL = 'http://servicesaetn-a.akamaihd.net/jservice/video/components/get-signed-signature?url=%s'
-SMIL_NS = {"a":"http://www.w3.org/2005/SMIL21/Language"}
 
 ####################################################################################################
 def Start():
