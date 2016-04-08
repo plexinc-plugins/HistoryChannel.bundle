@@ -2,8 +2,6 @@ TITLE = 'History Channel'
 PREFIX = '/video/historychannel'
 
 SHOWS = 'http://wombatapi.aetv.com/shows2/history'
-SIGNATURE_URL = 'http://servicesaetn-a.akamaihd.net/jservice/video/components/get-signed-signature?url=%s'
-SMIL_NS = {"a":"http://www.w3.org/2005/SMIL21/Language"}
 
 ####################################################################################################
 def Start():
@@ -17,35 +15,9 @@ def Start():
 def MainMenu():
     oc = ObjectContainer()
     
-    oc.add(
-        DirectoryObject(
-            key = Callback(Shows, title='History Channel Shows', network='History'),
-            title ='History Channel Shows'
-        )
-    )
-     
-    oc.add(
-        DirectoryObject(
-            key = Callback(Shows, title='History Channel 2 Shows', network='H2'),
-            title ='History Channel 2 Shows'
-        )
-    ) 
-    # Pull the full episode carousel id so it will not cause errors if it changes
-    #carousel_id=HTML.ElementFromURL(BASE_URL).xpath('//h2[text()="Full Episodes"]/parent::div//@id')[0].split('_')[0]
-    #oc.add(DirectoryObject(key=Callback(Videos, title='Full Episodes', show_url=BASE_URL, carousel_id=carousel_id), title='Full Episodes')) 
-    return oc
-
-####################################################################################################
-@route(PREFIX + '/shows')
-def Shows(title, network):
-    oc = ObjectContainer(title2=title)
-    
     json_data = JSON.ObjectFromURL(SHOWS)
     
     for item in json_data:
-        if not network == item['network']:
-            continue
-            
         if not (item['hasNoVideo'] == 'false' or item['hasNoHDVideo'] == 'false'):
             continue
         
@@ -69,7 +41,10 @@ def Shows(title, network):
 
     oc.objects.sort(key = lambda obj: obj.title)
     
-    return oc
+    if len(oc) < 1:
+        return ObjectContainer(header='Empty', message='There are no shows available.')
+    else:
+        return oc 
 
 ####################################################################################################
 @route(PREFIX + '/seasons')
