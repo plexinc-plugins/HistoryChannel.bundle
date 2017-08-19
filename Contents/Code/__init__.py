@@ -1,4 +1,6 @@
 TITLE = 'History Channel'
+ART = 'art-default.jpg'
+ICON = 'icon-default.jpg'
 PREFIX = '/video/historychannel'
 
 BASE_PATH = 'http://www.history.com'
@@ -20,7 +22,7 @@ def Start():
     HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11) AppleWebKit/601.1.56 (KHTML, like Gecko) Version/9.0 Safari/601.1.56'
 
 ####################################################################################################
-@handler(PREFIX, TITLE)
+@handler(PREFIX, TITLE, art=ART, thumb=ICON)
 def MainMenu():
 
     oc = ObjectContainer()
