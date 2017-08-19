@@ -1,7 +1,16 @@
 TITLE = 'History Channel'
 PREFIX = '/video/historychannel'
 
-SHOWS = 'http://wombatapi.aetv.com/shows2/history'
+BASE_PATH = 'http://www.history.com'
+SHOWS_URL = 'http://www.history.com/shows'
+VIDEO_URL = 'http://www.history.com/videos'
+
+EPISODES = 'https://mediaservice.aetndigital.com/SDK_v2/show_titles/episode/history?show_name=%s'
+CLIPS = 'https://mediaservice.aetndigital.com/SDK_v2/show_titles/clip/history?show_name=%s'
+
+RE_SEASEP =  Regex('S(\d+) E(\d+)')
+
+OLD_SHOWS_API = 'http://wombatapi.aetv.com/shows2/history'
 
 ####################################################################################################
 def Start():
@@ -13,94 +22,144 @@ def Start():
 ####################################################################################################
 @handler(PREFIX, TITLE)
 def MainMenu():
-    oc = ObjectContainer()
-    
-    json_data = JSON.ObjectFromURL(SHOWS)
-    
-    for item in json_data:
-        if not (item['hasNoVideo'] == 'false' or item['hasNoHDVideo'] == 'false'):
-            continue
-        
-        oc.add(
-            TVShowObject(
-                key = Callback(
-                    Seasons,
-                    show_id = item['showID'],
-                    show_title = item['detailTitle'],
-                    episode_url = item['episodeFeedURL'],
-                    clip_url = item['clipFeedURL'],
-                    show_thumb = item['detailImageURL2x']
-                ),
-                rating_key = item['showID'],
-                title = item['detailTitle'],
-                summary = item['detailDescription'],
-                thumb = item['detailImageURL2x'],
-                studio = item['network']
-            )
-        )
 
-    oc.objects.sort(key = lambda obj: obj.title)
+    oc = ObjectContainer()
+    oc.add(DirectoryObject(key=Callback(HTMLSection, title="Popular Shows", url=SHOWS_URL, section_type="popular-shows"), title="Popular Shows"))
+    oc.add(DirectoryObject(key=Callback(HTMLSection, title="All Shows", url=SHOWS_URL, section_type="all-shows"), title="All Shows"))
+    oc.add(DirectoryObject(key=Callback(HTMLSection, title="Recent Full Episodes", url=VIDEO_URL, section_type="most-recent-videos"), title="Recent Full Episodes"))
     
-    if len(oc) < 1:
-        return ObjectContainer(header='Empty', message='There are no shows available.')
-    else:
-        return oc 
+    return oc
 
 ####################################################################################################
-@route(PREFIX + '/seasons')
-def Seasons(show_id, show_title, episode_url, clip_url, show_thumb):
+# This function produces a list from the content section of the html
+# Can produce show sections as well as video sections for full episodes or movies
+@route(PREFIX + '/htmlsection')
+def HTMLSection(title, url, section_type):
 
-    oc = ObjectContainer(title2=show_title)
+    oc = ObjectContainer(title2=title)
+    data = HTML.ElementFromURL(url)
+
+    for item in data.xpath('//div[contains (@data-module-id, "%s")]/ul/li/a' %section_type):
+        # Skip any ads
+        try: is_ad = item.xpath('./@data-module-id')[0]
+        except: is_ad = ''
+        if 'tile-promo' in is_ad:
+            continue
+        item_url = item.xpath('./@href')[0]
+        if not item_url.startswith('http:'):
+            item_url = BASE_PATH + item_url
+        try: show_title = item.xpath('.//h4[@class="title"]/text()')[0]
+        except: 
+            # For shows that do not include a title, try to use URL to construct it
+            try: show_title = item_url.split('/')[-1].replace('-', ' ').title()
+            except: show_title = ''
+        try: item_thumb = item.xpath('./img/@src')[0]
+        except: item_thumb = None
+            
+        # For shows
+        if url==SHOWS_URL:
+            # Skip any All shows that do not include available episodes
+            try: episodes = item.xpath('./div[@class="episodes "]//text()')[0]
+            except: episodes = None
+            if not episodes and not item_thumb:
+                continue
+        
+            oc.add(
+                DirectoryObject(key = Callback(Seasons, url = item_url, title = show_title),
+                    title = show_title,
+                    thumb = Resource.ContentsOfURLWithFallback(item_thumb)
+                )
+            )
+
+        # For videos
+        else:
+            # Check for locked videos
+            lock_code = item.xpath('./div[@class="circle-icon"]/span/@class')[0]
+            if lock_code.endswith('key'):
+                continue
+
+            item_title = item.xpath('.//span[@class="meta"]/text()')[0]
+            try: date = Datetime.ParseDate(item.xpath('.//p[@class="airdate"]/text()')[0].split('on ')[1])
+            except: date = None
+            seas_ep = RE_SEASEP.search(item_title)
+            try: (season, episode) = seas_ep.group(1, 2)
+            except: (season, episode) = (0, 0)
+            
+            oc.add(
+                EpisodeObject(
+                    show = show_title,
+                    season = int(season),
+                    index = int(episode),
+                    url = item_url,
+                    title = item_title,
+                    originally_available_at = date,
+                    thumb = Resource.ContentsOfURLWithFallback(url=item_thumb)
+                )
+            )
+			
+    if len(oc) < 1:
+        Log ('still no value for objects')
+        return ObjectContainer(header="Empty", message="There are no unlocked videos to display right now.") 
+    else:
+        return oc
+####################################################################################################
+@route(PREFIX + '/seasons')
+def Seasons(title, url):
+
+    oc = ObjectContainer(title2=title)
     
-    json_data = JSON.ObjectFromURL(episode_url + '&filter_by=isBehindWall&filter_value=false')
+    # Pull the proper values for thumb and title from show page for json URL	
+    thumb = HTML.ElementFromURL(url, cacheTime=CACHE_1MONTH).xpath('//meta[@property="og:image"]/@content')[0]	
+    try: title = HTML.ElementFromURL(url, cacheTime=CACHE_1MONTH).xpath('//meta[@name="aetn:SeriesTitle"]/@content')[0]	
+    except: title = title	
+    # Pull the seasons from the episode json	
+    episode_url = EPISODES %String.Quote(title, usePlus = False)
+    json_content = HTTP.Request(episode_url + '&filter_by=isBehindWall&filter_value=false').content
+    json_data = JSON.ObjectFromString(json_content)
     
-    seasons = {}
+    seasons = []
     for item in json_data['Items']:
         if 'season' in item:
             if not int(item['season']) in seasons:
-                seasons[int(item['season'])] = 1
-            else:
-                seasons[int(item['season'])] = seasons[int(item['season'])] + 1
+                seasons.append(int(item['season']))
     
     for season in seasons:
         oc.add(
-            SeasonObject(
+            DirectoryObject(
                 key = Callback(
                     Episodes,
-                    show_title = show_title,
-                    episode_url = episode_url,
-                    clip_url = clip_url,
-                    show_thumb = show_thumb,
+                    show_title = title,
+                    url = '%s&filter_by=season&filter_value=%s' %(episode_url, season),
+                    show_thumb = thumb,
                     season = season
                 ),
                 title = 'Season %s' % season,
-                rating_key = show_id + str(season),
-                index = int(season),
-                episode_count = seasons[season],
-                thumb = show_thumb
+                thumb = thumb
             )
         )
  
+    if len(oc) < 1 and json_data['totalNumber'] > 0:
+        oc.add(DirectoryObject(key=Callback(Episodes, show_title=title, url=episode_url + '&filter_by=isBehindWall&filter_value=false', show_thumb=thumb), title="All Episodes", thumb = thumb))
+        
     if len(oc) < 1:
         return ObjectContainer(header='Empty', message='This show does not have any unlocked videos available.')
     else:
-        oc.objects.sort(key = lambda obj: obj.index, reverse = True)
         return oc 
     
-
 ####################################################################################################
 @route(PREFIX + '/episodes')
-def Episodes(show_title, episode_url, clip_url, show_thumb, season):
+def Episodes(show_title, url, show_thumb, season=None):
 
     oc = ObjectContainer(title2=show_title)
-    json_data = JSON.ObjectFromURL(episode_url + '&filter_by=isBehindWall&filter_value=false')
+    json_data = JSON.ObjectFromURL(url)
     
     for item in json_data['Items']:
-        if 'season' in item:
-            if not int(item['season']) == int(season):
-                continue
+        if item['isBehindWall'] == 'true':
+            continue
         
-        url = item['siteUrl']
+        # Found an item missing the siteUrl value
+        try: url = item['siteUrl']
+        except: continue
         title = item['title']
         summary = item['description'] if 'description' in item else None
         
@@ -114,6 +173,12 @@ def Episodes(show_title, episode_url, clip_url, show_thumb, season):
             thumb = show_thumb
             
         show = item['seriesName'] if 'seriesName' in item else show_title
+        # Fix URL service error for URLs that do not include a unique show folder/directory
+        if '/shows/video/' in url:
+            url = SHOWS_URL + show.lower().replace(' ', '-') + url.split('/shows')[1]
+        # Fix URL service error for URLs that do not include a '/shows/' directory
+        if not '/shows/' in url:
+            url = SHOWS_URL + url.split('www.aetv.com/')[1]
         duration = int(item['totalVideoDuration']) if 'totalVideoDuration' in item else None
         originally_available_at = Datetime.ParseDate(item['originalAirDate'].split('T')[0]).date() if 'originalAirDate' in item else None
         index = int(item['episode']) if 'episode' in item else None
@@ -136,4 +201,8 @@ def Episodes(show_title, episode_url, clip_url, show_thumb, season):
     
     oc.objects.sort(key = lambda obj: obj.index)
     
-    return oc
+    if len(oc) < 1:
+        Log ('still no value for objects')
+        return ObjectContainer(header="Empty", message="There are no unlocked videos to display right now.") 
+    else:
+        return oc
